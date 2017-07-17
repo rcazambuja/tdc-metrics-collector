@@ -1,0 +1,34 @@
+spring:
+  application:
+    name: metrics-collector
+  cloud:
+    stream:
+      bindings:
+        applicationMetrics:
+          destination: metrics
+        applicationMetrics_in:
+          destination: metrics
+          contentType: application/json
+          group: metrics-collector
+      metrics:
+        properties: spring.application.name, spring.cloud.client.hostname
+      kafka:
+        binder:
+          autoAddPartitions: true
+          brokers: localhost:9092
+          zkNodes: localhost:2181
+
+server:
+  port: 8080
+
+management:
+  contextPath: /management
+  security:
+    enabled: false
+
+influxdb:
+    dbName: dbMetrics
+    url: http://localhost
+    port: 8086
+    username: telemtry
+    password: telemtry

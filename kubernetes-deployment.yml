@@ -1,0 +1,31 @@
+apiVersion: extensions/v1beta1
+kind: Deployment
+metadata:
+  name: metrics-collector
+spec:
+  replicas: 1
+  template:
+    metadata:
+      labels:
+        app: metrics-collector
+    spec:
+      containers:
+      - name: metrics-collector
+        image: rcazambuja/metrics-collector:0.0.1
+        imagePullPolicy: Always
+        livenessProbe:
+          httpGet:
+            path: /management/health
+            port: 8080
+          initialDelaySeconds: 60
+          timeoutSeconds: 30
+        readinessProbe:
+          httpGet:
+            path: /management/info
+            port: 8080
+          timeoutSeconds: 30
+        env:
+        - name: SPRING_PROFILES_ACTIVE
+          value: cloud
+        ports:
+        - containerPort: 8080

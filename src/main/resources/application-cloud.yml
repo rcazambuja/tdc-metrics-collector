@@ -1,0 +1,16 @@
+spring:  
+  cloud:
+    stream:
+      kafka:
+        binder:
+          autoAddPartitions: true
+          brokers: 10.0.3.176:9092
+          zkNodes: 10.0.3.176:2181
+
+
+influxdb:
+    dbName: dbMetrics
+    url: http://10.0.3.122
+    port: 8086
+    username: telemtry
+    password: telemtry

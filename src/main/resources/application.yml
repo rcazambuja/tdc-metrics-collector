@@ -17,6 +17,9 @@ spring:
           autoAddPartitions: true
           brokers: localhost:9092
           zkNodes: localhost:2181
+  metrics:
+    servo:
+      enabled: false
 
 server:
   port: 8080

@@ -20,6 +20,7 @@ public class MetricsService {
     private final static String STREAMS_METRICS = "Streams";
     private final static String STREAMS_CHANNELS_METRICS = "StreamsChannels";
     private final static String HEALTH_METRICS = "Health";
+    private final static String COUNTERS_METRICS = "Counters";
     
     @Autowired
     public MetricsService(InfluxdbService influxdbService) {
@@ -33,8 +34,21 @@ public class MetricsService {
         storeStreamMetrics(metrics);        
         storeStreamChannelsMetrics(metrics);        
         storeHystrixMetrics(metrics);
+        storeCountersMetrics(metrics);
     }
 
+    private void storeCountersMetrics(ServiceMetrics metrics) {
+        Map<String, List<Metric>> countersMetrics = metrics.getCountersMetrics();
+        for(Entry<String, List<Metric>> entry : countersMetrics.entrySet()) {
+            Map<String, String> properties = new HashMap<>();            
+            properties.putAll(metrics.getProperties());
+            properties.put("status", entry.getKey().substring(0, entry.getKey().indexOf(".")));
+            properties.put("endpoint",  entry.getKey().substring(entry.getKey().indexOf(".")+1));
+            influxdbService.send(COUNTERS_METRICS, metrics.getCreatedTimeEpochSecond(), 
+                    properties, entry.getValue());
+        }
+    }
+    
     private void storeHystrixMetrics(ServiceMetrics metrics) {
         Map<String, List<Metric>> hystrixMetrics = metrics.getHystrixMetrics();
         for(Entry<String, List<Metric>> entry : hystrixMetrics.entrySet()) {

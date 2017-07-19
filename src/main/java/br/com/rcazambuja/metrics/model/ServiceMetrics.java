@@ -20,6 +20,7 @@ public class ServiceMetrics {
     private List<Metric> datasourceMetrics = new ArrayList<>();
     private List<Metric> streamsMetrics = new ArrayList<>();
     private Map<String, List<Metric>> streamsChannelsMetrics = new HashMap<>();
+    private Map<String, List<Metric>> countersMetrics = new HashMap<>();
     
     private Map<String, String> properties = new HashMap<>();
     
@@ -27,30 +28,31 @@ public class ServiceMetrics {
             "mem", "processors", "uptime", "instance.uptime", "systemload.average",
             "heap", "nonheap", "threads", "classes", "gc."};
     
-    private static final String HYSTRIX_METRICS = ".servo.hystrix.";    
-    private static final String EUREKA_METRICS = ".servo.eurekaclient.";        
-    private static final String HEALTH_METRICS = "gauge.servo.health.";
+    private static final String HYSTRIX_METRICS = ".hystrix.";
+    private static final String EUREKA_METRICS = ".eurekaclient.";
+    private static final String HEALTH_METRICS = "health.";
     private static final String DATASOURCE_METRICS = "datasource.";
     private static final String STREAMS_METRICS = "integration.";
     private static final String STREAMS_CHANNELS_METRICS = "channel.";
+    private static final String COUNTERS_METRICS = "counter.status.";
     
     private ServiceMetrics() {}
     
     public static final ServiceMetrics of(LocalDateTime createdTime, List<Metric> metrics, Map<String, String> properties) {
-        ServiceMetrics serviceMetrics = new ServiceMetrics();                       
+        ServiceMetrics serviceMetrics = new ServiceMetrics();
         
         serviceMetrics.createdTime = createdTime;
-        metrics.forEach(m -> serviceMetrics.addMetric(m));                       
+        metrics.forEach(m -> serviceMetrics.addMetric(m));
         properties.forEach((k, v) -> serviceMetrics.addProperty(k, v)); 
         
-        return serviceMetrics;        
+        return serviceMetrics;
     }
     
     public LocalDateTime getCreatedTime() {
         return createdTime;
     }
     
-    public long getCreatedTimeEpochSecond() {           
+    public long getCreatedTimeEpochSecond() {
         return createdTime
                 .atZone(ZoneId.of("GMT"))
                 .toEpochSecond();
@@ -88,6 +90,10 @@ public class ServiceMetrics {
         return Collections.unmodifiableMap(hystrixMetrics);
     }
     
+    public Map<String, List<Metric>> getCountersMetrics() {
+        return Collections.unmodifiableMap(countersMetrics);
+    }
+    
     public Map<String, String> getProperties() {
         return Collections.unmodifiableMap(properties);
     }
@@ -114,6 +120,13 @@ public class ServiceMetrics {
         streamsChannelsMetrics.put(channelId, metrics);
     }
     
+    private void putCountersMetrics(String requestedPath, Metric metric) {
+        List<Metric> metrics = countersMetrics.get(requestedPath);
+        if(metrics==null) metrics = new ArrayList<>();
+        metrics.add(metric);
+        countersMetrics.put(requestedPath, metrics);
+    }
+    
     private boolean isSystemMetric(Metric metric) {
         return Stream.of(SYSTEM_METRICS).anyMatch(x -> metric.getName().startsWith(x));
     }
@@ -136,6 +149,10 @@ public class ServiceMetrics {
     
     private boolean isStreamMetric(Metric metric) {
         return metric.getName().startsWith(STREAMS_METRICS);
+    }
+    
+    private boolean isCounterMetric(Metric metric) {
+        return metric.getName().startsWith(COUNTERS_METRICS);
     }
     
     private void addSystemMetric(Metric metric) {
@@ -201,18 +218,32 @@ public class ServiceMetrics {
         }
     }
     
-    public void addMetric(Metric metric) {        
+    private void addCountersMetric(Metric metric) {
+        if(isCounterMetric(metric)) {
+            String shortName = "requestcount";
+            String reqPath = metric.getName().replace(COUNTERS_METRICS, "");
+            putCountersMetrics(reqPath, Metric.of(shortName, metric.getValue()));
+        }
+    }
+    
+    public void addMetric(Metric metric) {
+        metric = Metric.of(
+                metric.getName()
+                    .replace("servo.", "")
+                    .replace("gauge.", ""), 
+                metric.getValue());
         addSystemMetric(metric);
         addHystrixMetric(metric);
         addEurekaMetric(metric);
         addHealthMetric(metric);
         addDatasourceMetric(metric);
         addStreamMetric(metric);
-        this.metrics.add(metric);        
+        addCountersMetric(metric);
+        this.metrics.add(metric);
     }
     
     @Override
-    public String toString() {        
+    public String toString() {
         return this.properties.toString();
     }
 }
